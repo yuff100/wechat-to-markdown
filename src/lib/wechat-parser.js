@@ -70,7 +70,7 @@ export function parseWeChatArticle(html) {
   content.find('pre').each((_, pre) => {
     const el = $(pre);
     const lang = el.attr('class')?.replace('prettyprint', '').trim() || '';
-    const code = el.text().trim();
+    const code = el.text();
 
     // Replace with proper code block
     el.replaceWith(`<pre><code class="language-${lang}">${code}</code></pre>`);

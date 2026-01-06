@@ -64,7 +64,50 @@ export async function POST(request) {
     // Initialize turndown service for HTML to Markdown conversion
     const turndownService = new TurndownService({
       headingStyle: 'atx',
-      codeBlockStyle: 'fenced'
+      codeBlockStyle: 'fenced',
+      preformattedCode: true
+    });
+
+    // Add a rule to handle code blocks with proper newline preservation
+    turndownService.addRule('codeBlocks', {
+      filter: function(node) {
+        return node.nodeName === 'PRE';
+      },
+      replacement: function(content, node) {
+        // Get the HTML content of the pre tag
+        let html = node.innerHTML || '';
+        
+        // Replace all <br> and <br/> tags with newline characters
+        html = html.replace(/<br\s*\/?>/gi, '\n');
+        
+        // Create a temporary element to extract text from modified HTML
+        const tempDiv = node.ownerDocument.createElement('div');
+        tempDiv.innerHTML = html;
+        const code = tempDiv.textContent || tempDiv.innerText || '';
+        
+        // Extract language from class attribute
+        let lang = '';
+        const preClass = node.className || '';
+        const codeEl = node.querySelector('code');
+        const codeClass = codeEl ? codeEl.className : '';
+        
+        // Try to find language
+        const combinedClass = preClass + ' ' + codeClass;
+        const langMatch = combinedClass.match(/(?:lang-|language-)(\w+)/);
+        if (langMatch) {
+          lang = langMatch[1];
+        } else if (combinedClass.includes('ruby')) {
+          lang = 'bash';
+        } else if (combinedClass.includes('python')) {
+          lang = 'python';
+        } else if (combinedClass.includes('javascript')) {
+          lang = 'javascript';
+        } else if (combinedClass.includes('cpp')) {
+          lang = 'cpp';
+        }
+        
+        return '\n```' + lang + '\n' + code + '\n```\n\n';
+      }
     });
 
     // Customize turndown to handle WeChat specific elements better
