@@ -37,6 +37,20 @@ export async function POST(request) {
     // Extract the article content
     const content = $('#js_content').html() || '';
 
+    // Convert CSS-based bold styling to semantic HTML before processing
+    // WeChat often uses inline styles instead of <strong> or <b> tags
+    $('#js_content [style*="font-weight"]').each((_, element) => {
+      const $el = $(element);
+      const style = $el.attr('style') || '';
+      
+      // Check if font-weight is bold (700 or bold keyword)
+      if (style.match(/font-weight:\s*(bold|700|600|800|900)/i)) {
+        const content = $el.html();
+        // Wrap content with strong tag
+        $el.replaceWith(`<strong>${content}</strong>`);
+      }
+    });
+
     // Prepare image storage information
     const images = [];
 
@@ -111,8 +125,9 @@ export async function POST(request) {
     });
 
     // Customize turndown to handle WeChat specific elements better
+    // Only add newlines for section and p tags, not span
     turndownService.addRule('wechatStyles', {
-      filter: ['span', 'section', 'p'],
+      filter: ['section', 'p'],
       replacement: function(content) {
         return content + '\n\n';
       }
@@ -120,7 +135,7 @@ export async function POST(request) {
 
     // Fix strong tag conversion to prevent line breaks before closing **
     turndownService.addRule('strongFix', {
-      filter: 'strong',
+      filter: ['strong', 'b'],
       replacement: function(content) {
         // Trim any trailing whitespace or line breaks to ensure closing ** is on the same line
         return `**${content.trim()}**`;
