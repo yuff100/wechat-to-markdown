@@ -124,23 +124,34 @@ export async function POST(request) {
       }
     });
 
-    // Customize turndown to handle WeChat specific elements better
-    // Only add newlines for section and p tags, not span
-    turndownService.addRule('wechatStyles', {
-      filter: ['section', 'p'],
-      replacement: function(content) {
-        return content + '\n\n';
+    // Fix strong tag conversion to prevent line breaks before closing **
+    // This rule should come BEFORE wechatStyles so it processes strong tags first
+    turndownService.addRule('strongFix', {
+      filter: 'strong',
+      replacement: function(content, node) {
+        // Trim content inside the bold markers
+        const trimmedContent = content.trim();
+        
+        // Check if strong is the main content of its parent block element
+        const parent = node.parentNode;
+        if (parent && ['P', 'SECTION', 'DIV'].includes(parent.nodeName)) {
+          // Get parent's text content and compare with strong's text
+          const parentText = parent.textContent.trim();
+          const strongText = node.textContent.trim();
+          
+          // If strong is the dominant content (>60% of parent), it's likely a heading
+          // Add line breaks after it
+          if (strongText.length > 0 && strongText.length / parentText.length > 0.6) {
+            return `**${trimmedContent}**\n\n`;
+          }
+        }
+        
+        return `**${trimmedContent}**`;
       }
     });
 
-    // Fix strong tag conversion to prevent line breaks before closing **
-    turndownService.addRule('strongFix', {
-      filter: ['strong', 'b'],
-      replacement: function(content) {
-        // Trim any trailing whitespace or line breaks to ensure closing ** is on the same line
-        return `**${content.trim()}**`;
-      }
-    });
+    // Removed wechatStyles rule - let default paragraph handling work
+    // and let strongFix handle the line breaks
 
     // Convert HTML to Markdown
     const contentHtml = $('#js_content').html();
