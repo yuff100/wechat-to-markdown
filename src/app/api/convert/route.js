@@ -82,6 +82,37 @@ export async function POST(request) {
       preformattedCode: true
     });
 
+    // Add table conversion rule
+    turndownService.addRule('tables', {
+      filter: 'table',
+      replacement: function(content, node) {
+        const rows = Array.from(node.querySelectorAll('tr'));
+        if (rows.length === 0) return '';
+
+        let markdown = '\n\n';
+
+        rows.forEach((row, rowIndex) => {
+          const cells = Array.from(row.querySelectorAll('th, td'));
+          if (cells.length === 0) return;
+
+          const cellContents = cells.map(cell => {
+            let text = cell.textContent || '';
+            text = text.trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+            return text;
+          });
+
+          markdown += '| ' + cellContents.join(' | ') + ' |\n';
+
+          if (rowIndex === 0) {
+            markdown += '| ' + cells.map(() => '---').join(' | ') + ' |\n';
+          }
+        });
+
+        markdown += '\n';
+        return markdown;
+      }
+    });
+
     // Add a rule to handle code blocks with proper newline preservation
     turndownService.addRule('codeBlocks', {
       filter: function(node) {
